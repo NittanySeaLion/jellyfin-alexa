@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "jellyfin music",
+      "invocationName": "jelly fin",
       "intents": [
         { "name": "AMAZON.CancelIntent", "samples": [] },
         { "name": "AMAZON.HelpIntent", "samples": [] },
@@ -23,6 +23,15 @@
             "play {query}",
             "play {query} music",
             "listen to {query}"
+          ]
+        },
+        {
+          "name": "OpenPlayerIntent",
+          "slots": [],
+          "samples": [
+            "open",
+            "start",
+            "get started"
           ]
         }
       ],
