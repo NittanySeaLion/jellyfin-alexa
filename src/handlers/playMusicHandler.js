@@ -38,13 +38,10 @@ const PlayMusicIntentHandler = {
     const { track, token } = queueStore.currentTrackWithToken(userId);
     const streamUrl = buildStreamUrl(track.Id);
 
-    // Leave the session open (no reprompt, so nothing talks over the music) so a bare
-    // follow-up like "play radiohead" has a chance to match PlayMusicIntent again instead
-    // of falling through to Alexa's built-in Music domain.
     return handlerInput.responseBuilder
       .speak(`Playing ${result.match.Name}.`)
       .addAudioPlayerPlayDirective('REPLACE_ALL', streamUrl, token, 0, null)
-      .withShouldEndSession(false)
+      .withShouldEndSession(true)
       .getResponse();
   },
 };
