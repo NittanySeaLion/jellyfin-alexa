@@ -69,14 +69,14 @@ If you're replacing an existing self-hosted Alexa skill that was already wired u
 2. Under Interaction Model → JSON Editor, paste in `skill-package/interactionModels/custom/en-US.json`.
 3. Under Endpoint, choose **HTTPS**, enter `https://<your-real-hostname>/alexa`, and set the SSL certificate type to "My development endpoint has a certificate from a trusted certificate authority" (correct since Cloudflare issues a publicly trusted cert).
 4. Under Interfaces, make sure **Audio Player** is enabled.
-5. Build the model, then use the **Test** tab to try it out.
+5. Build the model, then enable it under the Alexa app's Your Skills → Dev tab and test on a real Echo device — see the Testing section below for why the console's own Test tab won't work here.
 
 ## Testing
 
 1. **Jellyfin API checks** (see step 1 above) — do these first, independent of Alexa.
 2. **Endpoint smoke test**: with the container running, `curl` its `/alexa` route with a hand-built sample ASK request (see the [ASK SDK docs](https://developer.amazon.com/en-US/docs/alexa/custom-skills/request-and-response-json-reference.html) for sample payloads) to confirm it returns valid response JSON before involving Amazon's infrastructure at all.
-3. **Developer Console simulator**: use the Test tab to try "open jellyfin music" and "ask jellyfin music to play \<something\>", and inspect the response JSON for a correctly-shaped `AudioPlayer.Play` directive. Use the explicit "ask ___ to ___" phrasing rather than "play X on jellyfin music" — Alexa's built-in Music domain claims "play X on Y" phrasing before it ever reaches third-party skills (this isn't a bug in the interaction model, it's a platform-level reservation; only Amazon's invite-only Music Skill API partners can intercept that pattern).
-4. **Real device**: enable the skill for testing on your account and try it on an actual Echo.
+3. **Skip the Developer Console's Test tab simulator for actual invocation testing.** It's a known platform limitation: the browser simulator's virtual device doesn't report AudioPlayer support, so it rejects *any* AudioPlayer-interface skill with a generic "Sorry, \<invocation name\> is not supported on this device" before the request ever reaches your endpoint — regardless of how correctly everything else (endpoint, interfaces, invocation name, build) is configured. It's still useful for confirming the interaction model builds without errors, just not for testing real invocation.
+4. **Real device, from the start**: enable the skill under the Alexa app's **More → Skills & Games → Your Skills → Dev** tab (same Amazon account as your Developer Console login), then test by talking to an actual Echo/Echo Dot. Use the explicit "ask ___ to ___" phrasing (e.g. "Alexa, ask jellyfin music to play \<something\>") rather than "play X on jellyfin music" — Alexa's built-in Music domain claims "play X on Y" phrasing before it ever reaches third-party skills (this isn't a bug in the interaction model, it's a platform-level reservation; only Amazon's invite-only Music Skill API partners can intercept that pattern).
 5. **Unit tests**: `npm test` runs a couple of lightweight tests (Node's built-in test runner) covering the stream URL builder and the queue store logic.
 
 ## Known limitations
@@ -85,6 +85,7 @@ If you're replacing an existing self-hosted Alexa skill that was already wired u
 - **Resume behavior is unverified**: whether `AMAZON.ResumeIntent` is even delivered to the skill (vs. handled client-side by the Echo) hasn't been confirmed — test this in the simulator/on-device before relying on it.
 - **Alexa+ transition**: as of mid-2026 Amazon is mid-rollout on "Alexa+", its generative-AI Alexa experience. Custom skills and the AudioPlayer interface are not deprecated and remain reachable under Alexa+ via "Original Alexa Skills", but there are scattered reports of third-party skill instability during this transition. Worth re-verifying end-to-end if something that used to work stops working after an Alexa+ update.
 - **Invocation name must be 2+ words**: Amazon rejects single-word custom-skill invocation names (a single-word name silently failed to save in testing, which surfaced as a confusing "not supported on this device" error rather than a clear validation message). That's why the invocation name is `jellyfin music` rather than just `jellyfin`.
+- **The Developer Console's Test tab simulator can't test this skill at all**: it doesn't report AudioPlayer support in its virtual device context, so it rejects the skill with the same generic "not supported on this device" message regardless of configuration correctness. Test on a real Echo device instead (see Testing section).
 
 ## Privacy
 
