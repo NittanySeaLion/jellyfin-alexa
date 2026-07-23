@@ -3,13 +3,10 @@ services:
     build: .
     container_name: jellyfin-alexa
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      - JELLYFIN_URL=${JELLYFIN_URL}
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY}
+      - JELLYFIN_USER_ID=${JELLYFIN_USER_ID}
+      - PORT=${PORT:-1456}
     ports:
-      - "3000:3000"
-    networks:
-      - jellyfin-net
-
-networks:
-  jellyfin-net:
-    external: true
+      - "1456:1456"

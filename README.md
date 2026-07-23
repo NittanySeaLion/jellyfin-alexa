@@ -42,33 +42,26 @@ The skill code sends the API key as an `X-Emby-Token` header, but a plain browse
 - **Playlists**: `GET {JELLYFIN_URL}/Playlists/<playlistId>/Items?UserId=<id>&api_key=<key>` — some Jellyfin versions reject this under API-key-only auth ([jellyfin/jellyfin#15600](https://github.com/jellyfin/jellyfin/issues/15600)); the client falls back to `/Items?ParentId=<playlistId>` automatically if it fails, but it's worth knowing which path your server uses.
 - **Transcoding**: open `{JELLYFIN_URL}/Audio/<trackId>/universal?UserId=<id>&api_key=<key>&Container=mp3&AudioCodec=mp3` in a browser or VLC and confirm it plays. Alexa's AudioPlayer only supports AAC/MP3/HLS at 16–384kbps, so if your library is FLAC/lossless, Jellyfin must transcode — this requires working FFmpeg on the server.
 
-### 2. Configure and run the container (on the NAS, alongside Jellyfin)
+### 2. Deploy as a Portainer stack (alongside Jellyfin)
+
+If your NAS's Docker containers are managed through Portainer, deploy this the same way as your other stacks: **Portainer → Stacks → Add stack**, build method "Repository" pointing at this repo (or paste `docker-compose.yml`'s contents directly), and set these as **Environment variables in the Portainer UI** rather than a plaintext `.env` file on disk:
 
 ```
-cp .env.example .env
-# edit .env: JELLYFIN_URL (internal address), JELLYFIN_API_KEY, JELLYFIN_USER_ID
+JELLYFIN_URL=http://<nas-lan-ip>:8096   # Jellyfin's internal address, not through Cloudflare
+JELLYFIN_API_KEY=<from Jellyfin Dashboard > API Keys>
+JELLYFIN_USER_ID=<the Jellyfin user id this skill acts as, from Dashboard > Users>
+PORT=1456
 ```
 
-`JELLYFIN_API_KEY` comes from Jellyfin's Dashboard → API Keys. `JELLYFIN_USER_ID` is the id of the Jellyfin user whose library/permissions this skill uses — visible in the URL when viewing that user under Dashboard → Users.
+`docker-compose.yml` reads these via `${VAR}` substitution, so they work identically whether they come from Portainer's stack environment variables or (if you're not using Portainer) a local `.env` file — see `.env.example` for the file-based equivalent.
 
-If a Docker network doesn't already tie your Jellyfin/Cloudflare containers together, create one (or find the existing one with `docker network ls` and update `docker-compose.yml`'s `networks:` block to match):
+No shared Docker network is required: this container just needs its port published on the host, and the Cloudflare tunnel container reaches it via the NAS's own address (see below), the same way it already reaches other services on this NAS.
 
-```
-docker network create jellyfin-net
-docker compose up -d --build
-```
+### 3. Point the Cloudflare Tunnel at it
 
-### 3. Add the Cloudflare Tunnel ingress rule
+This NAS's tunnel is a **token-run tunnel** (`cloudflared tunnel --token ...`) — there's no local ingress `config.yml` to edit. Public hostnames are configured remotely in the **Cloudflare Zero Trust dashboard** (Networks → Tunnels → your tunnel → Public Hostname tab), pointing each hostname at a `http://<address>:<port>` target the tunnel container can reach (its own `localhost`, or the NAS's LAN IP, depending on how that entry is set up).
 
-On whatever host manages your tunnel config, add an ingress entry pointing at this container. If the tunnel container shares the `jellyfin-net` Docker network, you can reference the service by name:
-
-```yaml
-ingress:
-  - hostname: alexa-jellyfin.example.com   # replace with your real subdomain
-    service: http://jellyfin-alexa:3000
-```
-
-Otherwise, use the NAS's LAN IP and the published port instead of the service name.
+If you're replacing an existing self-hosted Alexa skill that was already wired up this way, the simplest path is to reuse its exact port so the existing Public Hostname entry just starts serving the new container — no dashboard changes needed at all.
 
 ### 4. Create the skill in the Alexa Developer Console
 
