@@ -41,7 +41,7 @@ const PlayMusicIntentHandler = {
     return handlerInput.responseBuilder
       .speak(`Playing ${result.match.Name}.`)
       .addAudioPlayerPlayDirective('REPLACE_ALL', streamUrl, token, 0, null)
-      .withShouldEndSession(true)
+      .withShouldEndSession(false)
       .getResponse();
   },
 };
