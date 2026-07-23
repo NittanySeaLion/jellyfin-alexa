@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "jellyfin",
+      "invocationName": "jellyfin music",
       "intents": [
         { "name": "AMAZON.CancelIntent", "samples": [] },
         { "name": "AMAZON.HelpIntent", "samples": [] },
@@ -21,7 +21,6 @@
           ],
           "samples": [
             "play {query}",
-            "play {query} on jellyfin",
             "play {query} music",
             "listen to {query}"
           ]

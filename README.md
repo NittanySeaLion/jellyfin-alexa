@@ -4,7 +4,7 @@ A self-hosted custom Alexa skill for voice-controlled music playback from a [Jel
 
 ## How it works
 
-Alexa itself is the audio player. When you say something like "Alexa, ask Jellyfin to play Daft Punk", the skill:
+Alexa itself is the audio player. When you say something like "Alexa, ask Jellyfin Music to play Daft Punk", the skill:
 
 1. Searches your Jellyfin library for a matching artist, album, playlist, or song.
 2. Resolves that match to an ordered list of tracks.
@@ -75,7 +75,7 @@ If you're replacing an existing self-hosted Alexa skill that was already wired u
 
 1. **Jellyfin API checks** (see step 1 above) — do these first, independent of Alexa.
 2. **Endpoint smoke test**: with the container running, `curl` its `/alexa` route with a hand-built sample ASK request (see the [ASK SDK docs](https://developer.amazon.com/en-US/docs/alexa/custom-skills/request-and-response-json-reference.html) for sample payloads) to confirm it returns valid response JSON before involving Amazon's infrastructure at all.
-3. **Developer Console simulator**: use the Test tab to try "open jellyfin" and "play \<something\>", and inspect the response JSON for a correctly-shaped `AudioPlayer.Play` directive.
+3. **Developer Console simulator**: use the Test tab to try "open jellyfin music" and "ask jellyfin music to play \<something\>", and inspect the response JSON for a correctly-shaped `AudioPlayer.Play` directive. Use the explicit "ask ___ to ___" phrasing rather than "play X on jellyfin music" — Alexa's built-in Music domain claims "play X on Y" phrasing before it ever reaches third-party skills (this isn't a bug in the interaction model, it's a platform-level reservation; only Amazon's invite-only Music Skill API partners can intercept that pattern).
 4. **Real device**: enable the skill for testing on your account and try it on an actual Echo.
 5. **Unit tests**: `npm test` runs a couple of lightweight tests (Node's built-in test runner) covering the stream URL builder and the queue store logic.
 
@@ -84,6 +84,7 @@ If you're replacing an existing self-hosted Alexa skill that was already wired u
 - **In-memory queue state**: playback queue/position is held in a single process's memory, keyed by Alexa user id. A container restart mid-playback drops the queue — just say "play" again. This is an accepted trade-off for a single-household, single-instance deployment, not a bug.
 - **Resume behavior is unverified**: whether `AMAZON.ResumeIntent` is even delivered to the skill (vs. handled client-side by the Echo) hasn't been confirmed — test this in the simulator/on-device before relying on it.
 - **Alexa+ transition**: as of mid-2026 Amazon is mid-rollout on "Alexa+", its generative-AI Alexa experience. Custom skills and the AudioPlayer interface are not deprecated and remain reachable under Alexa+ via "Original Alexa Skills", but there are scattered reports of third-party skill instability during this transition. Worth re-verifying end-to-end if something that used to work stops working after an Alexa+ update.
+- **Invocation name must be 2+ words**: Amazon rejects single-word custom-skill invocation names (a single-word name silently failed to save in testing, which surfaced as a confusing "not supported on this device" error rather than a clear validation message). That's why the invocation name is `jellyfin music` rather than just `jellyfin`.
 
 ## Privacy
 
