@@ -34,10 +34,12 @@ skill-package/
 
 ### 1. Verify your Jellyfin server first (do this before touching Alexa)
 
-A few things are worth checking directly against your Jellyfin server before wiring up the skill, since behavior varies by version when authenticating with an API key (rather than a user login token):
+A few things are worth checking directly against your Jellyfin server before wiring up the skill, since behavior varies by version when authenticating with an API key (rather than a user login token).
 
-- **Search**: `GET {JELLYFIN_URL}/Items?searchTerm=<query>&IncludeItemTypes=MusicArtist,MusicAlbum,Playlist,Audio&Recursive=true&UserId=<id>` — confirm it returns the item types you expect.
-- **Playlists**: `GET {JELLYFIN_URL}/Playlists/<playlistId>/Items?UserId=<id>` — some Jellyfin versions reject this under API-key-only auth ([jellyfin/jellyfin#15600](https://github.com/jellyfin/jellyfin/issues/15600)); the client falls back to `/Items?ParentId=<playlistId>` automatically if it fails, but it's worth knowing which path your server uses.
+The skill code sends the API key as an `X-Emby-Token` header, but a plain browser address bar can't set custom headers — so for these manual checks, pass the key as an `api_key` query param instead (Jellyfin accepts either). Also note `<id>` below means your Jellyfin **user GUID** (Dashboard → Users → click your user → the GUID is in that page's URL), not your username.
+
+- **Search**: `GET {JELLYFIN_URL}/Items?searchTerm=<query>&IncludeItemTypes=MusicArtist,MusicAlbum,Playlist,Audio&Recursive=true&UserId=<id>&api_key=<key>` — replace `<query>` with a real search term, e.g. `daft%20punk`. Confirm it returns the item types you expect. A 401 here means the `api_key`/header isn't reaching Jellyfin; a 400 or empty result with the right key usually means `UserId` is wrong (username instead of GUID, or a GUID from the wrong server).
+- **Playlists**: `GET {JELLYFIN_URL}/Playlists/<playlistId>/Items?UserId=<id>&api_key=<key>` — some Jellyfin versions reject this under API-key-only auth ([jellyfin/jellyfin#15600](https://github.com/jellyfin/jellyfin/issues/15600)); the client falls back to `/Items?ParentId=<playlistId>` automatically if it fails, but it's worth knowing which path your server uses.
 - **Transcoding**: open `{JELLYFIN_URL}/Audio/<trackId>/universal?UserId=<id>&api_key=<key>&Container=mp3&AudioCodec=mp3` in a browser or VLC and confirm it plays. Alexa's AudioPlayer only supports AAC/MP3/HLS at 16–384kbps, so if your library is FLAC/lossless, Jellyfin must transcode — this requires working FFmpeg on the server.
 
 ### 2. Configure and run the container (on the NAS, alongside Jellyfin)
