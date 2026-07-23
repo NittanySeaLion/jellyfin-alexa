@@ -44,7 +44,15 @@ The skill code sends the API key as an `X-Emby-Token` header, but a plain browse
 
 ### 2. Deploy as a Portainer stack (alongside Jellyfin)
 
-If your NAS's Docker containers are managed through Portainer, deploy this the same way as your other stacks: **Portainer → Stacks → Add stack**, build method "Repository" pointing at this repo (or paste `docker-compose.yml`'s contents directly), and set these as **Environment variables in the Portainer UI** rather than a plaintext `.env` file on disk:
+Deploy this using Portainer's **Repository** build method, not "Web editor" — the Web editor only stores the compose file text with no access to this repo's `Dockerfile`/`src/`, so `build: .` has nothing to build from and fails. Repository mode clones the actual repo first, so the build context is there.
+
+**Portainer → Stacks → Add stack**, build method **Repository**:
+- Repository URL: `https://github.com/NittanySeaLion/jellyfin-alexa`
+- Repository reference: `main` (or `refs/heads/main`, depending on the field)
+- Compose path: `docker-compose.yml`
+- Authentication: none needed, it's a public repo.
+
+Set these as **Environment variables in the Portainer UI** rather than a plaintext `.env` file on disk:
 
 ```
 JELLYFIN_URL=http://<nas-lan-ip>:8096   # Jellyfin's internal address, not through Cloudflare
@@ -54,6 +62,8 @@ PORT=1456
 ```
 
 `docker-compose.yml` reads these via `${VAR}` substitution, so they work identically whether they come from Portainer's stack environment variables or (if you're not using Portainer) a local `.env` file — see `.env.example` for the file-based equivalent.
+
+**To pick up code changes later**: redeploy the stack in Portainer with "Re-pull"/"Re-build" enabled (Repository-mode stacks can pull the latest commit and rebuild), or `git pull && docker compose up -d --build` if driving it over the CLI instead.
 
 No shared Docker network is required: this container just needs its port published on the host, and the Cloudflare tunnel container reaches it via the NAS's own address (see below), the same way it already reaches other services on this NAS.
 
