@@ -3,7 +3,7 @@
     "publishingInformation": {
       "locales": {
         "en-US": {
-          "name": "Jellyfin",
+          "name": "Jellyfin Music",
           "summary": "Voice-controlled music playback from a self-hosted Jellyfin server.",
           "description": "Play music from your own Jellyfin media server by voice. Say things like 'play some Daft Punk' or 'play my Chill playlist' and Alexa streams it directly from your Jellyfin library.",
           "examplePhrases": [
