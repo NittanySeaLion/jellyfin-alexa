@@ -90,9 +90,14 @@ const PreviousIntentHandler = {
 const StopIntentHandler = {
   canHandle(handlerInput) {
     const requestType = Alexa.getRequestType(handlerInput.requestEnvelope);
+    if (requestType === 'PlaybackController.StopCommandIssued') {
+      return true;
+    }
+    if (requestType !== 'IntentRequest') {
+      return false;
+    }
     const intentName = Alexa.getIntentName(handlerInput.requestEnvelope);
-    return (requestType === 'IntentRequest' && (intentName === 'AMAZON.StopIntent' || intentName === 'AMAZON.CancelIntent'))
-      || requestType === 'PlaybackController.StopCommandIssued';
+    return intentName === 'AMAZON.StopIntent' || intentName === 'AMAZON.CancelIntent';
   },
   handle(handlerInput) {
     const userId = getUserId(handlerInput);
