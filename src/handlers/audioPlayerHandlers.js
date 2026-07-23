@@ -42,12 +42,15 @@ const PlaybackNearlyFinishedHandler = {
   },
   handle(handlerInput) {
     const userId = getUserId(handlerInput);
-    const next = queueStore.peekNext(userId);
+    const { token: previousToken } = handlerInput.requestEnvelope.request;
+
+    const next = queueStore.isRepeatEnabled(userId)
+      ? queueStore.currentTrackWithToken(userId)
+      : queueStore.peekNext(userId);
     if (!next) {
       return handlerInput.responseBuilder.getResponse();
     }
 
-    const { token: previousToken } = handlerInput.requestEnvelope.request;
     const streamUrl = buildStreamUrl(next.track.Id);
     return handlerInput.responseBuilder
       .addAudioPlayerPlayDirective('ENQUEUE', streamUrl, next.token, 0, previousToken)

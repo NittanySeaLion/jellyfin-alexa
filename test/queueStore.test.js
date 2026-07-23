@@ -42,3 +42,34 @@ test('setIndexFromToken only accepts tokens for the current queue', () => {
 
   queueStore.clear(userId);
 });
+
+test('shuffleUpcoming only reorders tracks after the current index', () => {
+  const userId = 'user-queue-test-3';
+  const tracks = [{ Id: 'a' }, { Id: 'b' }, { Id: 'c' }, { Id: 'd' }, { Id: 'e' }];
+  queueStore.setQueue(userId, tracks, 'Test');
+  queueStore.advance(userId); // currentIndex now 1 (track 'b')
+
+  assert.equal(queueStore.shuffleUpcoming(userId), true);
+  const queue = queueStore.getQueue(userId);
+  assert.equal(queue.tracks[0].Id, 'a');
+  assert.equal(queue.tracks[1].Id, 'b');
+  assert.deepEqual(
+    queue.tracks.slice(2).map((t) => t.Id).sort(),
+    ['c', 'd', 'e'],
+  );
+
+  assert.equal(queueStore.shuffleUpcoming('no-such-user'), false);
+  queueStore.clear(userId);
+});
+
+test('repeat mode is per-user and requires an active queue', () => {
+  const userId = 'user-queue-test-4';
+  assert.equal(queueStore.setRepeat(userId, true), false);
+  assert.equal(queueStore.isRepeatEnabled(userId), false);
+
+  queueStore.setQueue(userId, [{ Id: 'a' }], 'Test');
+  assert.equal(queueStore.setRepeat(userId, true), true);
+  assert.equal(queueStore.isRepeatEnabled(userId), true);
+
+  queueStore.clear(userId);
+});

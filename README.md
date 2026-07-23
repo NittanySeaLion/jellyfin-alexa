@@ -4,7 +4,7 @@ A self-hosted custom Alexa skill for voice-controlled music playback from a [Jel
 
 ## How it works
 
-Alexa itself is the audio player. When you say something like "Alexa, ask Jellyfin Music to play Daft Punk", the skill:
+Alexa itself is the audio player. When you say something like "Alexa, ask jelly fin to play Daft Punk", the skill:
 
 1. Searches your Jellyfin library for a matching artist, album, playlist, or song.
 2. Resolves that match to an ordered list of tracks.
@@ -12,7 +12,12 @@ Alexa itself is the audio player. When you say something like "Alexa, ask Jellyf
 
 There's no separate playback client to control — Alexa is the speaker. The skill's backend is a small Node.js/Express service, self-hosted (not AWS Lambda), meant to run as a Docker container alongside your Jellyfin server and reached through your existing Cloudflare Tunnel.
 
-Supported voice commands (v1): play by artist/album/playlist/song, pause, resume, next, previous, stop. Volume is handled natively by the Echo device. Shuffle, repeat, "what's playing", and multi-user account linking are explicitly out of scope for v1.
+Supported voice commands: play by artist/album/playlist/song (either generically, via `PlayMusicIntent`, or with explicit type intents — `PlayArtistIntent`, `PlayAlbumIntent`, `PlayPlaylistIntent`), pause, resume, next, previous, stop, shuffle the rest of the queue, repeat the current track. Volume is handled natively by the Echo device. "What's playing" and multi-user account linking remain out of scope.
+
+**Invocation notes learned the hard way**:
+- Say **"ask jelly fin to \_\_\_"** explicitly rather than "play X on jelly fin" — Alexa's built-in Music domain claims any "play X on/by Y" phrasing before it ever reaches third-party skills (only Amazon's invite-only Music Skill API partners can intercept that pattern).
+- Native "Alexa, open jelly fin" (`LaunchRequest`) has been unreliable in practice. `OpenPlayerIntent` gives the same "ready" response through the proven-reliable one-shot path instead — say **"ask jelly fin to open"**.
+- Once music is playing, "pause"/"next"/"previous"/"resume" work with no re-invocation at all — Alexa routes those to whichever skill currently owns the playing audio, independent of any session or invocation name.
 
 ## Project layout
 
@@ -21,10 +26,19 @@ src/
   index.js                       Express app + Alexa request routing
   skill.js                       Registers all request/error handlers
   config.js                      Env var loading/validation
-  handlers/                      One file per group of intents/requests
+  handlers/
+    launchHandler.js             LaunchRequest + OpenPlayerIntent (same "ready" response)
+    playShared.js                Shared search/queue/play logic used by every play-family intent
+    playMusicHandler.js          PlayMusicIntent (generic, backend-disambiguated)
+    playByTypeHandlers.js        PlayArtistIntent / PlayAlbumIntent / PlayPlaylistIntent
+    playbackControlHandlers.js   Pause/Resume/Next/Previous/Stop
+    queueControlHandlers.js      ShuffleIntent / RepeatIntent
+    audioPlayerHandlers.js       AudioPlayer.* system request handlers
+    standardHandlers.js          Help/Fallback/SessionEnded
+    errorHandler.js
   jellyfin/client.js             Jellyfin search + track-list resolution
   jellyfin/streamUrl.js          Builds transcoded stream URLs
-  state/queueStore.js            In-memory per-user playback queue
+  state/queueStore.js            In-memory per-user playback queue, shuffle, repeat
 skill-package/
   skill.json                     Alexa skill manifest
   interactionModels/custom/en-US.json   Intents, slots, sample utterances
@@ -75,9 +89,11 @@ If you're replacing an existing self-hosted Alexa skill that was already wired u
 
 ### 4. Create the skill in the Alexa Developer Console
 
-1. Create a new skill → **Custom** model → **Provision your own** (not Lambda) → category **Music & Audio**.
+1. Create a new skill → **Custom** model → **Provision your own** (not Lambda) → category **Music & Audio**. Give it an invocation name that's **at least two words** — Amazon rejects single-word invocation names.
 2. Under Interaction Model → JSON Editor, paste in `skill-package/interactionModels/custom/en-US.json`.
-3. Under Endpoint, choose **HTTPS**, enter `https://<your-real-hostname>/alexa`, and set the SSL certificate type to "My development endpoint has a certificate from a trusted certificate authority" (correct since Cloudflare issues a publicly trusted cert).
+3. Under Endpoint, choose **HTTPS**, enter `https://<your-real-hostname>/alexa`, and set the SSL certificate type carefully:
+   - If Cloudflare (or wherever your cert comes from) issued a cert **specifically for that one hostname**, use "My development endpoint has a certificate from a trusted certificate authority."
+   - If it's a **wildcard cert** (e.g. `*.yourdomain.com` covering multiple subdomains — common with Cloudflare) use **"My development endpoint is a sub-domain of a domain that has a wildcard certificate from a certificate authority"** instead. Picking the wrong one here silently fails every invocation with a generic "not supported on this device" error and zero server-side logs, since Alexa's own certificate check rejects the connection before ever sending the request — this cost significant debugging time to track down. Check `openssl s_client -connect <host>:443 -servername <host> | openssl x509 -noout -issuer -subject` if you're not sure which kind of cert you have.
 4. Under Interfaces, make sure **Audio Player** is enabled.
 5. Build the model, then enable it under the Alexa app's Your Skills → Dev tab and test on a real Echo device — see the Testing section below for why the console's own Test tab won't work here.
 
@@ -86,16 +102,20 @@ If you're replacing an existing self-hosted Alexa skill that was already wired u
 1. **Jellyfin API checks** (see step 1 above) — do these first, independent of Alexa.
 2. **Endpoint smoke test**: with the container running, `curl` its `/alexa` route with a hand-built sample ASK request (see the [ASK SDK docs](https://developer.amazon.com/en-US/docs/alexa/custom-skills/request-and-response-json-reference.html) for sample payloads) to confirm it returns valid response JSON before involving Amazon's infrastructure at all.
 3. **Skip the Developer Console's Test tab simulator for actual invocation testing.** It's a known platform limitation: the browser simulator's virtual device doesn't report AudioPlayer support, so it rejects *any* AudioPlayer-interface skill with a generic "Sorry, \<invocation name\> is not supported on this device" before the request ever reaches your endpoint — regardless of how correctly everything else (endpoint, interfaces, invocation name, build) is configured. It's still useful for confirming the interaction model builds without errors, just not for testing real invocation.
-4. **Real device, from the start**: enable the skill under the Alexa app's **More → Skills & Games → Your Skills → Dev** tab (same Amazon account as your Developer Console login), then test by talking to an actual Echo/Echo Dot. Use the explicit "ask ___ to ___" phrasing (e.g. "Alexa, ask jellyfin music to play \<something\>") rather than "play X on jellyfin music" — Alexa's built-in Music domain claims "play X on Y" phrasing before it ever reaches third-party skills (this isn't a bug in the interaction model, it's a platform-level reservation; only Amazon's invite-only Music Skill API partners can intercept that pattern).
+4. **Real device, from the start**: enable the skill under the Alexa app's **More → Skills & Games → Your Skills → Dev** tab (same Amazon account as your Developer Console login), then test by talking to an actual Echo/Echo Dot. Use the explicit "ask ___ to ___" phrasing (e.g. "Alexa, ask jelly fin to play \<something\>") rather than "play X on jelly fin" — Alexa's built-in Music domain claims "play X on Y" phrasing before it ever reaches third-party skills (this isn't a bug in the interaction model, it's a platform-level reservation; only Amazon's invite-only Music Skill API partners can intercept that pattern).
 5. **Unit tests**: `npm test` runs a couple of lightweight tests (Node's built-in test runner) covering the stream URL builder and the queue store logic.
 
 ## Known limitations
 
 - **In-memory queue state**: playback queue/position is held in a single process's memory, keyed by Alexa user id. A container restart mid-playback drops the queue — just say "play" again. This is an accepted trade-off for a single-household, single-instance deployment, not a bug.
-- **Resume behavior is unverified**: whether `AMAZON.ResumeIntent` is even delivered to the skill (vs. handled client-side by the Echo) hasn't been confirmed — test this in the simulator/on-device before relying on it.
-- **Alexa+ transition**: as of mid-2026 Amazon is mid-rollout on "Alexa+", its generative-AI Alexa experience. Custom skills and the AudioPlayer interface are not deprecated and remain reachable under Alexa+ via "Original Alexa Skills", but there are scattered reports of third-party skill instability during this transition. Worth re-verifying end-to-end if something that used to work stops working after an Alexa+ update.
-- **Invocation name must be 2+ words**: Amazon rejects single-word custom-skill invocation names (a single-word name silently failed to save in testing, which surfaced as a confusing "not supported on this device" error rather than a clear validation message). That's why the invocation name is `jellyfin music` rather than just `jellyfin`.
+- **Resume behavior is unverified**: whether `AMAZON.ResumeIntent` is even delivered to the skill (vs. handled client-side by the Echo) hasn't been confirmed — test this on-device before relying on it.
+- **Alexa+ transition**: as of mid-2026 Amazon is mid-rollout on "Alexa+", its generative-AI Alexa experience. Custom skills and the AudioPlayer interface are not deprecated and remain reachable under Alexa+ via "Original Alexa Skills" (which wraps third-party skill responses with its own "Here's \<Skill Name\>... say Alexa exit to get back" framing automatically — no need to add your own exit prompt). There are real, intermittent reports of third-party skill instability during this transition: the exact same phrase can work one moment and fail with a generic "not supported on this device" the next, with no configuration change in between and a fully healthy, reachable endpoint. If that happens, it's very likely Alexa-side, not this skill — retry later rather than re-debugging the deployment.
+- **Native "open \<invocation\>" (`LaunchRequest`) has been unreliable** in testing, independent of the above — `OpenPlayerIntent` ("ask jelly fin to open") reaches the identical response through the one-shot path, which has been consistently reliable, so prefer that over "Alexa, open jelly fin."
+- **Invocation name must be 2+ words**: Amazon rejects single-word custom-skill invocation names (a single-word name silently failed to save in testing, which surfaced as a confusing "not supported on this device" error rather than a clear validation message).
 - **The Developer Console's Test tab simulator can't test this skill at all**: it doesn't report AudioPlayer support in its virtual device context, so it rejects the skill with the same generic "not supported on this device" message regardless of configuration correctness. Test on a real Echo device instead (see Testing section).
+- **Wildcard SSL certificates need the matching Endpoint option** (see Setup step 4) — picking the wrong one fails every invocation identically to the two points above (generic rejection, no server logs), so it's easy to misattribute to something else.
+- **`ask-sdk-express-adapter` needs the raw request body**: don't add a global `express.json()` (or any other body parser) in front of its route — it needs to verify Alexa's request signature against the raw, unparsed body itself, and a parser ahead of it breaks that with an opaque 500 and no application-level error logged.
+- **Handler `canHandle` functions must short-circuit on request type before calling `Alexa.getIntentName()`** — that function throws for any non-`IntentRequest`. Computing it as a bare `const` before checking the request type (instead of relying on `&&` short-circuit evaluation, or an early `return`/`if`) crashes for every `AudioPlayer.*`/`System.*` event, which can silently break unrelated functionality (this broke auto-advance to the next queued track for a while, since the crash happened in an earlier-registered handler before dispatch ever reached `PlaybackNearlyFinishedHandler`).
 
 ## Privacy
 

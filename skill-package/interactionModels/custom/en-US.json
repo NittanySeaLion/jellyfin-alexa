@@ -22,8 +22,6 @@
           "samples": [
             "play {query}",
             "play {query} music",
-            "play artist {query}",
-            "play album {query}",
             "play song {query}",
             "listen to {query}",
             "search for {query}"
@@ -35,6 +33,66 @@
             "open",
             "start",
             "get started"
+          ]
+        },
+        {
+          "name": "PlayArtistIntent",
+          "slots": [
+            {
+              "name": "artist",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "play artist {artist}",
+            "play music by {artist}",
+            "play songs by {artist}"
+          ]
+        },
+        {
+          "name": "PlayAlbumIntent",
+          "slots": [
+            {
+              "name": "album",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "play album {album}",
+            "listen to album {album}",
+            "play the album {album}"
+          ]
+        },
+        {
+          "name": "PlayPlaylistIntent",
+          "slots": [
+            {
+              "name": "playlist",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "play playlist {playlist}",
+            "play my playlist {playlist}",
+            "listen to playlist {playlist}"
+          ]
+        },
+        {
+          "name": "ShuffleIntent",
+          "samples": [
+            "shuffle music",
+            "shuffle my music",
+            "turn shuffle on",
+            "shuffle everything"
+          ]
+        },
+        {
+          "name": "RepeatIntent",
+          "samples": [
+            "repeat this song",
+            "repeat on",
+            "turn repeat on",
+            "repeat the current track"
           ]
         }
       ],

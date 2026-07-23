@@ -7,9 +7,9 @@
           "summary": "Voice-controlled music playback from a self-hosted Jellyfin server.",
           "description": "Play music from your own Jellyfin media server by voice. Say things like 'play some Daft Punk' or 'play my Chill playlist' and Alexa streams it directly from your Jellyfin library.",
           "examplePhrases": [
-            "Alexa, ask Jellyfin Music to play Daft Punk",
-            "Alexa, tell Jellyfin Music to play my Chill playlist",
-            "Alexa, open Jellyfin Music"
+            "Alexa, ask jelly fin to play Daft Punk",
+            "Alexa, tell jelly fin to play my Chill playlist",
+            "Alexa, ask jelly fin to open"
           ],
           "keywords": ["jellyfin", "music", "self-hosted", "media server"]
         }

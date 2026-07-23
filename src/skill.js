@@ -3,12 +3,18 @@ const Alexa = require('ask-sdk-core');
 const { LaunchRequestHandler, OpenPlayerIntentHandler } = require('./handlers/launchHandler');
 const { PlayMusicIntentHandler } = require('./handlers/playMusicHandler');
 const {
+  PlayArtistIntentHandler,
+  PlayAlbumIntentHandler,
+  PlayPlaylistIntentHandler,
+} = require('./handlers/playByTypeHandlers');
+const {
   PauseIntentHandler,
   ResumeIntentHandler,
   NextIntentHandler,
   PreviousIntentHandler,
   StopIntentHandler,
 } = require('./handlers/playbackControlHandlers');
+const { ShuffleIntentHandler, RepeatIntentHandler } = require('./handlers/queueControlHandlers');
 const {
   PlaybackStartedHandler,
   PlaybackFinishedHandler,
@@ -28,11 +34,16 @@ const skill = Alexa.SkillBuilders.custom()
     LaunchRequestHandler,
     OpenPlayerIntentHandler,
     PlayMusicIntentHandler,
+    PlayArtistIntentHandler,
+    PlayAlbumIntentHandler,
+    PlayPlaylistIntentHandler,
     PauseIntentHandler,
     ResumeIntentHandler,
     NextIntentHandler,
     PreviousIntentHandler,
     StopIntentHandler,
+    ShuffleIntentHandler,
+    RepeatIntentHandler,
     PlaybackStartedHandler,
     PlaybackFinishedHandler,
     PlaybackStoppedHandler,

@@ -20,7 +20,9 @@ function parseToken(token) {
 }
 
 function setQueue(userId, tracks, matchName) {
-  queues.set(userId, { tracks, currentIndex: 0, matchName });
+  queues.set(userId, {
+    tracks, currentIndex: 0, matchName, repeatEnabled: false,
+  });
 }
 
 function getQueue(userId) {
@@ -86,6 +88,34 @@ function clear(userId) {
   queues.delete(userId);
 }
 
+// Shuffles the not-yet-played remainder of the queue in place, leaving the current and
+// already-played tracks untouched. Downstream reads (peekNext, tokenFor) work off the same
+// array, so nothing else needs to know a shuffle happened.
+function shuffleUpcoming(userId) {
+  const queue = queues.get(userId);
+  if (!queue) return false;
+
+  const upcoming = queue.tracks.slice(queue.currentIndex + 1);
+  for (let i = upcoming.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [upcoming[i], upcoming[j]] = [upcoming[j], upcoming[i]];
+  }
+  queue.tracks = [...queue.tracks.slice(0, queue.currentIndex + 1), ...upcoming];
+  return true;
+}
+
+function setRepeat(userId, enabled) {
+  const queue = queues.get(userId);
+  if (!queue) return false;
+  queue.repeatEnabled = enabled;
+  return true;
+}
+
+function isRepeatEnabled(userId) {
+  const queue = queues.get(userId);
+  return Boolean(queue && queue.repeatEnabled);
+}
+
 module.exports = {
   setQueue,
   getQueue,
@@ -99,4 +129,7 @@ module.exports = {
   setIndexFromToken,
   parseToken,
   clear,
+  shuffleUpcoming,
+  setRepeat,
+  isRepeatEnabled,
 };

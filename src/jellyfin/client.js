@@ -19,10 +19,10 @@ async function jellyfinGet(path, params = {}) {
   return response.json();
 }
 
-async function searchItems(query) {
+async function searchItems(query, itemTypes = SEARCHABLE_ITEM_TYPES) {
   const data = await jellyfinGet('/Items', {
     searchTerm: query,
-    IncludeItemTypes: SEARCHABLE_ITEM_TYPES,
+    IncludeItemTypes: itemTypes,
     Recursive: true,
     UserId: config.jellyfinUserId,
     Limit: 20,
@@ -88,8 +88,8 @@ async function resolveTracks(item) {
   }
 }
 
-async function findPlayableItem(query) {
-  const results = await searchItems(query);
+async function findPlayableItem(query, itemTypes) {
+  const results = await searchItems(query, itemTypes);
   const match = results[0];
   if (!match) {
     return null;
@@ -107,4 +107,7 @@ module.exports = {
   searchItems,
   resolveTracks,
   findPlayableItem,
+  ITEM_TYPE_ARTIST: 'MusicArtist',
+  ITEM_TYPE_ALBUM: 'MusicAlbum',
+  ITEM_TYPE_PLAYLIST: 'Playlist',
 };
