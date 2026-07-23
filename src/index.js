@@ -8,6 +8,17 @@ const adapter = new ExpressAdapter(skill, true, true);
 const app = express();
 app.use(express.json());
 
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  res.on('finish', () => {
+    const requestType = req.path === '/alexa' && req.body && req.body.request
+      ? ` type=${req.body.request.type}`
+      : '';
+    console.log(`[${timestamp}] ${req.method} ${req.path}${requestType} -> ${res.statusCode}`);
+  });
+  next();
+});
+
 app.get('/', (req, res) => {
   res.status(200).send('jellyfin-alexa skill endpoint is running');
 });
