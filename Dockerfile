@@ -7,6 +7,8 @@ RUN npm install --omit=dev
 
 COPY src ./src
 
+RUN chown -R node:node /app
+
 ENV NODE_ENV=production
 EXPOSE 1456
 
