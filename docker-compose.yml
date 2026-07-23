@@ -1,0 +1,15 @@
+services:
+  jellyfin-alexa:
+    build: .
+    container_name: jellyfin-alexa
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    networks:
+      - jellyfin-net
+
+networks:
+  jellyfin-net:
+    external: true

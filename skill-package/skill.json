@@ -1,0 +1,46 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "name": "Jellyfin",
+          "summary": "Voice-controlled music playback from a self-hosted Jellyfin server.",
+          "description": "Play music from your own Jellyfin media server by voice. Say things like 'play some Daft Punk' or 'play my Chill playlist' and Alexa streams it directly from your Jellyfin library.",
+          "examplePhrases": [
+            "Alexa, ask Jellyfin to play Daft Punk",
+            "Alexa, tell Jellyfin to play my Chill playlist",
+            "Alexa, open Jellyfin"
+          ],
+          "keywords": ["jellyfin", "music", "self-hosted", "media server"]
+        }
+      },
+      "isAvailableWorldwide": false,
+      "testingInstructions": "Requires a self-hosted Jellyfin server reachable at the configured endpoint.",
+      "category": "MUSIC_AND_AUDIO",
+      "distributionCountries": []
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "https://alexa-jellyfin.example.com/alexa"
+        },
+        "interfaces": [
+          { "type": "AUDIO_PLAYER" }
+        ]
+      }
+    },
+    "manifestVersion": "1.0",
+    "privacyAndCompliance": {
+      "allowsPurchases": false,
+      "usesPersonalInfo": false,
+      "isChildDirected": false,
+      "isExportCompliant": true,
+      "containsAds": false,
+      "locales": {
+        "en-US": {
+          "privacyPolicyUrl": ""
+        }
+      }
+    }
+  }
+}

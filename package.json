@@ -1,0 +1,20 @@
+{
+  "name": "jellyfin-alexa",
+  "version": "0.1.0",
+  "description": "Self-hosted custom Alexa skill for voice-controlled music playback from a Jellyfin server.",
+  "main": "src/index.js",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ask-sdk-core": "^2.14.0",
+    "ask-sdk-express-adapter": "^2.3.2",
+    "ask-sdk-model": "^1.39.0",
+    "express": "^4.19.2"
+  }
+}

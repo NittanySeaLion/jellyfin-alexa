@@ -1,0 +1,17 @@
+node_modules/
+
+# Real secrets/config -- only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# ASK CLI local state (can embed skill/vendor IDs tied to a personal Amazon developer account)
+.ask/
+ask-resources.json
+ask-states.json
+
+*.pem
+*.key
+
+npm-debug.log*
+.DS_Store

@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log*
+.git
+.gitignore
+.env
+.env.example
+README.md
+skill-package
+test
+.ask
+ask-resources.json
