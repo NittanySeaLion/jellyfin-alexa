@@ -22,12 +22,15 @@
           "samples": [
             "play {query}",
             "play {query} music",
-            "listen to {query}"
+            "play artist {query}",
+            "play album {query}",
+            "play song {query}",
+            "listen to {query}",
+            "search for {query}"
           ]
         },
         {
           "name": "OpenPlayerIntent",
-          "slots": [],
           "samples": [
             "open",
             "start",
