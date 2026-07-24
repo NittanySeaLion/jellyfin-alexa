@@ -10,7 +10,7 @@ Alexa itself is the audio player. When you say something like "Alexa, ask jelly 
 2. Resolves that match to an ordered list of tracks.
 3. Tells the Echo device to stream the audio via Alexa's [AudioPlayer interface](https://developer.amazon.com/en-US/docs/alexa/custom-skills/audioplayer-interface-reference.html), through this skill's own stream proxy (see below) rather than a direct Jellyfin URL.
 
-There's no separate playback client to control — Alexa is the speaker. The skill's backend is a small Node.js/Express service, self-hosted (not AWS Lambda), meant to run as a Docker container alongside your Jellyfin server and reached through your existing Cloudflare Tunnel.
+There's no separate playback client to control — Alexa is the speaker. The skill's backend is a small Node.js/Express service, self-hosted (not AWS Lambda), meant to run as a Docker container reachable at a public HTTPS URL. It doesn't need to run on the same host as Jellyfin, just be able to reach it.
 
 **Stream proxy, not a direct Jellyfin URL**: `AudioPlayer.Play` directives are fetched by the Echo device itself via a plain HTTPS GET — Alexa's protocol gives no other option (no custom headers, no POST, no request encryption), so whatever URL we hand it is what leaves this infrastructure and reaches Amazon's. Rather than handing Alexa a direct Jellyfin URL with the real `JELLYFIN_API_KEY` embedded in it, `buildStreamUrl` (`src/jellyfin/streamUrl.js`) points at this server's own `GET /stream/:trackId` route with a short-lived HMAC-signed token (4-hour expiry, `STREAM_SIGNING_SECRET`). That route (`src/streamProxy.js`) verifies the token, then fetches the real Jellyfin URL server-side (`buildJellyfinStreamUrl`, using the real API key internally only) and pipes the audio back — Alexa/Amazon never sees the Jellyfin API key at all. The tradeoff: unlike a direct Jellyfin URL, this server is now in the live audio path for the whole track, not just the initial request — a restart mid-song would interrupt playback, whereas a direct-URL approach wouldn't have that dependency. Given the container's stability once properly configured, this is judged an acceptable tradeoff for not exposing the API key.
 
@@ -23,6 +23,17 @@ Shuffle/repeat/start-over use Amazon's standard **PlaybackMode intents** (`AMAZO
 - Say **"ask jelly fish hook to \_\_\_"** explicitly rather than "play X on jelly fish hook" — Alexa's built-in Music domain claims any "play X on/by Y" phrasing before it ever reaches third-party skills (only Amazon's invite-only Music Skill API partners can intercept that pattern).
 - Native "Alexa, open jelly fish hook" (`LaunchRequest`) has been unreliable in practice. `OpenPlayerIntent` gives the same "ready" response through the proven-reliable one-shot path instead — say **"ask jelly fish hook to open"**.
 - Once music is playing, "pause"/"next"/"previous"/"resume"/"shuffle"/"repeat"/"start over" all work with no re-invocation at all — Alexa routes those to whichever skill currently owns the playing audio, independent of any session or invocation name.
+
+## Prerequisites
+
+Before starting, you'll need:
+
+- **A running Jellyfin server** with your music library already added. [Installing Jellyfin](https://jellyfin.org/docs/general/installation/) is outside the scope of this project — this skill assumes one already exists and is reachable over the network.
+- **Docker and Docker Compose** on whatever host will run this skill. It doesn't have to be the same machine as Jellyfin — a NAS, a VPS, a spare Pi, anything that can reach Jellyfin's network address and stay running continuously.
+- **A public HTTPS endpoint for that host, with a valid certificate, that Alexa's servers can reach.** This README's own deployment notes below use a Cloudflare Tunnel as one concrete example, but that's not a requirement of the code — any reverse proxy or tunnel that terminates TLS and forwards to the container works just as well (nginx + Let's Encrypt/certbot, Caddy, ngrok, a different tunnel provider, a router port-forward with your own cert). The one hard requirement is a certificate Alexa's own endpoint validator accepts — see the wildcard-certificate note in Setup step 4, a real gotcha that cost significant debugging time to track down and applies regardless of which proxy/tunnel you use.
+- **An Amazon Developer account** (free) to create the custom skill at [developer.amazon.com](https://developer.amazon.com/alexa/console/ask).
+- **An Echo device, or the Alexa app**, signed into the same Amazon account as your Developer Console login — needed to actually test voice invocation, since the console's own Test tab can't test this skill at all (see Testing section).
+- **Node.js 18+**, only if you want to run `npm test` outside Docker. Not needed just to deploy and use the skill.
 
 ## Project layout
 
@@ -62,38 +73,45 @@ The skill code sends the API key as an `X-Emby-Token` header, but a plain browse
 - **Playlists**: `GET {JELLYFIN_URL}/Playlists/<playlistId>/Items?UserId=<id>&api_key=<key>` — some Jellyfin versions reject this under API-key-only auth ([jellyfin/jellyfin#15600](https://github.com/jellyfin/jellyfin/issues/15600)); the client falls back to `/Items?ParentId=<playlistId>` automatically if it fails, but it's worth knowing which path your server uses.
 - **Transcoding**: open `{JELLYFIN_URL}/Audio/<trackId>/universal?UserId=<id>&api_key=<key>&Container=mp3&AudioCodec=mp3` in a browser or VLC and confirm it plays. Alexa's AudioPlayer only supports AAC/MP3/HLS at 16–384kbps, so if your library is FLAC/lossless, Jellyfin must transcode — this requires working FFmpeg on the server.
 
-### 2. Deploy as a Portainer stack (alongside Jellyfin)
+### 2. Deploy the container
 
-Deploy this using Portainer's **Repository** build method, not "Web editor" — the Web editor only stores the compose file text with no access to this repo's `Dockerfile`/`src/`, so `build: .` has nothing to build from and fails. Repository mode clones the actual repo first, so the build context is there.
-
-**Portainer → Stacks → Add stack**, build method **Repository**:
-- Repository URL: `https://github.com/NittanySeaLion/jellyfin-alexa`
-- Repository reference: `main` (or `refs/heads/main`, depending on the field)
-- Compose path: `docker-compose.yml`
-- Authentication: none needed, it's a public repo.
-
-Set these as **Environment variables in the Portainer UI** rather than a plaintext `.env` file on disk:
+Clone this repo onto the host that'll run it, then copy `.env.example` to `.env` and fill in real values:
 
 ```
-JELLYFIN_URL=http://<nas-lan-ip>:8096   # Jellyfin's internal address, not through Cloudflare
+cp .env.example .env
+```
+
+```
+JELLYFIN_URL=http://<jellyfin-host>:8096   # Jellyfin's internal/LAN address, not the public tunnel/proxy URL
 JELLYFIN_API_KEY=<from Jellyfin Dashboard > API Keys>
 JELLYFIN_USER_ID=<the Jellyfin user id this skill acts as, from Dashboard > Users>
-PUBLIC_BASE_URL=<your real public hostname, same one configured in the Alexa Endpoint, no /alexa path>
+PUBLIC_BASE_URL=<the public hostname from Prerequisites, same one you'll set in the Alexa Endpoint, no /alexa path>
 STREAM_SIGNING_SECRET=<a long random secret -- node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
 PORT=1456
 ```
 
-`docker-compose.yml` reads these via `${VAR}` substitution, so they work identically whether they come from Portainer's stack environment variables or (if you're not using Portainer) a local `.env` file — see `.env.example` for the file-based equivalent.
+Then:
 
-**To pick up code changes later**: redeploy the stack in Portainer with "Re-pull"/"Re-build" enabled (Repository-mode stacks can pull the latest commit and rebuild), or `git pull && docker compose up -d --build` if driving it over the CLI instead.
+```
+docker compose up -d --build
+```
 
-No shared Docker network is required: this container just needs its port published on the host, and the Cloudflare tunnel container reaches it via the NAS's own address (see below), the same way it already reaches other services on this NAS.
+**Using Portainer instead of the CLI?** Deploy via Portainer's **Repository** build method, not "Web editor" — Web editor only stores the compose file text with no access to this repo's `Dockerfile`/`src/`, so `build: .` has nothing to build from and fails. Repository mode clones the actual repo first, so the build context is there.
+- Repository URL: `https://github.com/NittanySeaLion/jellyfin-alexa`
+- Repository reference: `main`
+- Compose path: `docker-compose.yml`
+- Set the same variables above as **Environment variables in the Portainer UI** rather than a `.env` file on disk.
 
-### 3. Point the Cloudflare Tunnel at it
+**To pick up code changes later**: `git pull && docker compose up -d --build` (or redeploy the stack in Portainer with "Re-pull"/"Re-build" enabled, for Repository-mode stacks).
 
-This NAS's tunnel is a **token-run tunnel** (`cloudflared tunnel --token ...`) — there's no local ingress `config.yml` to edit. Public hostnames are configured remotely in the **Cloudflare Zero Trust dashboard** (Networks → Tunnels → your tunnel → Public Hostname tab), pointing each hostname at a `http://<address>:<port>` target the tunnel container can reach (its own `localhost`, or the NAS's LAN IP, depending on how that entry is set up).
+No shared Docker network is required — this container just needs its port published on the host, reachable by whatever's terminating public HTTPS for it (see step 3).
 
-If you're replacing an existing self-hosted Alexa skill that was already wired up this way, the simplest path is to reuse its exact port so the existing Public Hostname entry just starts serving the new container — no dashboard changes needed at all.
+### 3. Expose it over HTTPS
+
+Alexa needs to reach this container at a public HTTPS URL with a valid certificate. How you do that depends on what you're already using:
+
+- **Cloudflare Tunnel** (what this project's own deployment uses): if it's a token-run tunnel (`cloudflared tunnel --token ...`), there's no local ingress `config.yml` to edit — public hostnames are configured remotely in the **Cloudflare Zero Trust dashboard** (Networks → Tunnels → your tunnel → Public Hostname tab), pointing the hostname at a `http://<address>:<port>` target the tunnel can reach. If you're replacing an existing self-hosted Alexa skill wired up this way, reuse its exact port so the existing Public Hostname entry just starts serving the new container — no dashboard changes needed.
+- **Any other reverse proxy or tunnel** (nginx + certbot, Caddy, ngrok, a different tunnel provider, a router port-forward with your own cert): works the same way — point it at this container's published port. The one thing that matters regardless of which you use is the certificate type, covered in step 4.
 
 ### 4. Create the skill in the Alexa Developer Console
 
@@ -127,4 +145,4 @@ If you're replacing an existing self-hosted Alexa skill that was already wired u
 
 ## Privacy
 
-This repo is public. Nothing environment-specific — real Jellyfin URL/IP, API key, user id, or Cloudflare hostname — is committed; only placeholders appear in `.env.example` and `skill-package/skill.json`. Keep your real `.env` local (it's git-ignored) and double-check `git diff --staged` before pushing any config changes.
+This repo is public. Nothing environment-specific — real Jellyfin URL/IP, API key, user id, or public hostname — is committed; only placeholders appear in `.env.example` and `skill-package/skill.json`. Keep your real `.env` local (it's git-ignored) and double-check `git diff --staged` before pushing any config changes.
