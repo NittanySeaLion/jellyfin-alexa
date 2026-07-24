@@ -8,9 +8,11 @@ Alexa itself is the audio player. When you say something like "Alexa, ask jelly 
 
 1. Searches your Jellyfin library for a matching artist, album, playlist, or song.
 2. Resolves that match to an ordered list of tracks.
-3. Tells the Echo device to stream the audio directly from Jellyfin's HTTP API via Alexa's [AudioPlayer interface](https://developer.amazon.com/en-US/docs/alexa/custom-skills/audioplayer-interface-reference.html).
+3. Tells the Echo device to stream the audio via Alexa's [AudioPlayer interface](https://developer.amazon.com/en-US/docs/alexa/custom-skills/audioplayer-interface-reference.html), through this skill's own stream proxy (see below) rather than a direct Jellyfin URL.
 
 There's no separate playback client to control — Alexa is the speaker. The skill's backend is a small Node.js/Express service, self-hosted (not AWS Lambda), meant to run as a Docker container alongside your Jellyfin server and reached through your existing Cloudflare Tunnel.
+
+**Stream proxy, not a direct Jellyfin URL**: `AudioPlayer.Play` directives are fetched by the Echo device itself via a plain HTTPS GET — Alexa's protocol gives no other option (no custom headers, no POST, no request encryption), so whatever URL we hand it is what leaves this infrastructure and reaches Amazon's. Rather than handing Alexa a direct Jellyfin URL with the real `JELLYFIN_API_KEY` embedded in it, `buildStreamUrl` (`src/jellyfin/streamUrl.js`) points at this server's own `GET /stream/:trackId` route with a short-lived HMAC-signed token (4-hour expiry, `STREAM_SIGNING_SECRET`). That route (`src/streamProxy.js`) verifies the token, then fetches the real Jellyfin URL server-side (`buildJellyfinStreamUrl`, using the real API key internally only) and pipes the audio back — Alexa/Amazon never sees the Jellyfin API key at all. The tradeoff: unlike a direct Jellyfin URL, this server is now in the live audio path for the whole track, not just the initial request — a restart mid-song would interrupt playback, whereas a direct-URL approach wouldn't have that dependency. Given the container's stability once properly configured, this is judged an acceptable tradeoff for not exposing the API key.
 
 Supported voice commands: play by artist/album/playlist/song (either generically, via `PlayMusicIntent`, or with explicit type intents — `PlayArtistIntent`, `PlayAlbumIntent`, `PlayPlaylistIntent`), pause, resume, next, previous, stop, start over, shuffle the rest of the queue, and turn repeat on/off. Volume is handled natively by the Echo device. "What's playing" and multi-user account linking remain out of scope.
 
@@ -29,6 +31,7 @@ src/
   index.js                       Express app + Alexa request routing
   skill.js                       Registers all request/error handlers
   config.js                      Env var loading/validation
+  streamProxy.js                 GET /stream/:trackId -- verifies signed token, proxies Jellyfin audio
   handlers/
     launchHandler.js             LaunchRequest + OpenPlayerIntent (same "ready" response)
     playShared.js                Shared search/queue/play logic used by every play-family intent
@@ -40,7 +43,7 @@ src/
     standardHandlers.js          Help/Fallback/SessionEnded
     errorHandler.js
   jellyfin/client.js             Jellyfin search + track-list resolution
-  jellyfin/streamUrl.js          Builds transcoded stream URLs
+  jellyfin/streamUrl.js          buildStreamUrl (public proxy URL) / buildJellyfinStreamUrl (real, server-side only) / stream token sign+verify
   state/queueStore.js            In-memory per-user playback queue, shuffle, repeat
 skill-package/
   skill.json                     Alexa skill manifest
@@ -75,6 +78,8 @@ Set these as **Environment variables in the Portainer UI** rather than a plainte
 JELLYFIN_URL=http://<nas-lan-ip>:8096   # Jellyfin's internal address, not through Cloudflare
 JELLYFIN_API_KEY=<from Jellyfin Dashboard > API Keys>
 JELLYFIN_USER_ID=<the Jellyfin user id this skill acts as, from Dashboard > Users>
+PUBLIC_BASE_URL=<your real public hostname, same one configured in the Alexa Endpoint, no /alexa path>
+STREAM_SIGNING_SECRET=<a long random secret -- node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
 PORT=1456
 ```
 

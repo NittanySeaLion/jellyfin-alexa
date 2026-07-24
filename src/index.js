@@ -2,6 +2,7 @@ const express = require('express');
 const { ExpressAdapter } = require('ask-sdk-express-adapter');
 const skill = require('./skill');
 const config = require('./config');
+const { streamProxyHandler } = require('./streamProxy');
 
 const adapter = new ExpressAdapter(skill, true, true);
 
@@ -18,6 +19,8 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
   res.status(200).send('jellyfin-alexa skill endpoint is running');
 });
+
+app.get('/stream/:trackId', streamProxyHandler);
 
 app.post('/alexa', adapter.getRequestHandlers());
 
