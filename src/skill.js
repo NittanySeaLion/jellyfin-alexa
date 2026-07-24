@@ -14,7 +14,13 @@ const {
   PreviousIntentHandler,
   StopIntentHandler,
 } = require('./handlers/playbackControlHandlers');
-const { ShuffleIntentHandler, RepeatIntentHandler } = require('./handlers/queueControlHandlers');
+const {
+  ShuffleOnIntentHandler,
+  ShuffleOffIntentHandler,
+  LoopOnIntentHandler,
+  LoopOffIntentHandler,
+  StartOverIntentHandler,
+} = require('./handlers/queueControlHandlers');
 const {
   PlaybackStartedHandler,
   PlaybackFinishedHandler,
@@ -42,8 +48,11 @@ const skill = Alexa.SkillBuilders.custom()
     NextIntentHandler,
     PreviousIntentHandler,
     StopIntentHandler,
-    ShuffleIntentHandler,
-    RepeatIntentHandler,
+    ShuffleOnIntentHandler,
+    ShuffleOffIntentHandler,
+    LoopOnIntentHandler,
+    LoopOffIntentHandler,
+    StartOverIntentHandler,
     PlaybackStartedHandler,
     PlaybackFinishedHandler,
     PlaybackStoppedHandler,

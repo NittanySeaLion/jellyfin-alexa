@@ -12,13 +12,15 @@ Alexa itself is the audio player. When you say something like "Alexa, ask jelly 
 
 There's no separate playback client to control — Alexa is the speaker. The skill's backend is a small Node.js/Express service, self-hosted (not AWS Lambda), meant to run as a Docker container alongside your Jellyfin server and reached through your existing Cloudflare Tunnel.
 
-Supported voice commands: play by artist/album/playlist/song (either generically, via `PlayMusicIntent`, or with explicit type intents — `PlayArtistIntent`, `PlayAlbumIntent`, `PlayPlaylistIntent`), pause, resume, next, previous, stop, shuffle the rest of the queue, repeat the current track. Volume is handled natively by the Echo device. "What's playing" and multi-user account linking remain out of scope.
+Supported voice commands: play by artist/album/playlist/song (either generically, via `PlayMusicIntent`, or with explicit type intents — `PlayArtistIntent`, `PlayAlbumIntent`, `PlayPlaylistIntent`), pause, resume, next, previous, stop, start over, shuffle the rest of the queue, and turn repeat on/off. Volume is handled natively by the Echo device. "What's playing" and multi-user account linking remain out of scope.
+
+Shuffle/repeat/start-over use Amazon's standard **PlaybackMode intents** (`AMAZON.ShuffleOnIntent`/`ShuffleOffIntent`, `AMAZON.LoopOnIntent`/`LoopOffIntent`, `AMAZON.StartOverIntent`) rather than custom intents, specifically because Alexa routes these — like pause/next/previous — to whichever skill owns the currently (or most recently) playing audio, with no re-invocation needed. `ShuffleOffIntent` gets a graceful "there's nothing to turn off" response, since shuffling here is a one-time reorder rather than a persistent mode.
 
 **Invocation notes learned the hard way**:
 - The invocation name is **"jelly fish hook"** (three words) — a two-word name ("jelly fin") worked but occasionally got misheard/misrouted; three distinctive words further reduced that.
 - Say **"ask jelly fish hook to \_\_\_"** explicitly rather than "play X on jelly fish hook" — Alexa's built-in Music domain claims any "play X on/by Y" phrasing before it ever reaches third-party skills (only Amazon's invite-only Music Skill API partners can intercept that pattern).
 - Native "Alexa, open jelly fish hook" (`LaunchRequest`) has been unreliable in practice. `OpenPlayerIntent` gives the same "ready" response through the proven-reliable one-shot path instead — say **"ask jelly fish hook to open"**.
-- Once music is playing, "pause"/"next"/"previous"/"resume" work with no re-invocation at all — Alexa routes those to whichever skill currently owns the playing audio, independent of any session or invocation name.
+- Once music is playing, "pause"/"next"/"previous"/"resume"/"shuffle"/"repeat"/"start over" all work with no re-invocation at all — Alexa routes those to whichever skill currently owns the playing audio, independent of any session or invocation name.
 
 ## Project layout
 
@@ -33,7 +35,7 @@ src/
     playMusicHandler.js          PlayMusicIntent (generic, backend-disambiguated)
     playByTypeHandlers.js        PlayArtistIntent / PlayAlbumIntent / PlayPlaylistIntent
     playbackControlHandlers.js   Pause/Resume/Next/Previous/Stop
-    queueControlHandlers.js      ShuffleIntent / RepeatIntent
+    queueControlHandlers.js      Shuffle/Loop/StartOver PlaybackMode intents
     audioPlayerHandlers.js       AudioPlayer.* system request handlers
     standardHandlers.js          Help/Fallback/SessionEnded
     errorHandler.js

@@ -77,24 +77,11 @@
             "listen to playlist {playlist}"
           ]
         },
-        {
-          "name": "ShuffleIntent",
-          "samples": [
-            "shuffle music",
-            "shuffle my music",
-            "turn shuffle on",
-            "shuffle everything"
-          ]
-        },
-        {
-          "name": "RepeatIntent",
-          "samples": [
-            "repeat this song",
-            "repeat on",
-            "turn repeat on",
-            "repeat the current track"
-          ]
-        }
+        { "name": "AMAZON.ShuffleOnIntent", "samples": [] },
+        { "name": "AMAZON.ShuffleOffIntent", "samples": [] },
+        { "name": "AMAZON.LoopOnIntent", "samples": [] },
+        { "name": "AMAZON.LoopOffIntent", "samples": [] },
+        { "name": "AMAZON.StartOverIntent", "samples": [] }
       ],
       "types": []
     }
