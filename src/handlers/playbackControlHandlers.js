@@ -29,7 +29,7 @@ const ResumeIntentHandler = {
     const current = queueStore.currentTrackWithToken(userId);
     if (!current) {
       return handlerInput.responseBuilder
-        .speak("There's nothing queued to resume. Try saying, play, followed by an artist or album.")
+        .speak("There's nothing queued to resume. Try saying, play or shuffle, followed by an artist or album.")
         .getResponse();
     }
 

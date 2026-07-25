@@ -7,8 +7,9 @@ const queueStore = require('../state/queueStore');
 // `shuffle` starts on a random track instead of always track 1 -- see queueStore.setQueue.
 async function playQuery(handlerInput, query, itemTypes, { shuffle = false } = {}) {
   if (!query) {
+    const verb = shuffle ? 'shuffle' : 'play';
     return handlerInput.responseBuilder
-      .speak("I didn't catch what to play. Try saying, play, followed by an artist or album.")
+      .speak(`I didn't catch what to ${verb}. Try saying, ${verb}, followed by an artist or album.`)
       .getResponse();
   }
 

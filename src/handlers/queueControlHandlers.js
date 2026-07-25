@@ -23,7 +23,7 @@ const ShuffleOnIntentHandler = {
     const shuffled = queueStore.shuffleUpcoming(userId);
     if (!shuffled) {
       return handlerInput.responseBuilder
-        .speak("There's nothing queued to shuffle. Try saying, play, followed by an artist or album, first.")
+        .speak("There's nothing queued to shuffle. Try saying, play or shuffle, followed by an artist or album, first.")
         .getResponse();
     }
 
@@ -58,7 +58,7 @@ const LoopOnIntentHandler = {
     const enabled = queueStore.setRepeat(userId, true);
     if (!enabled) {
       return handlerInput.responseBuilder
-        .speak("There's nothing playing to repeat. Try saying, play, followed by an artist or album, first.")
+        .speak("There's nothing playing to repeat. Try saying, play or shuffle, followed by an artist or album, first.")
         .getResponse();
     }
 
@@ -92,7 +92,7 @@ const StartOverIntentHandler = {
     const current = queueStore.currentTrackWithToken(userId);
     if (!current) {
       return handlerInput.responseBuilder
-        .speak("There's nothing playing to start over. Try saying, play, followed by an artist or album, first.")
+        .speak("There's nothing playing to start over. Try saying, play or shuffle, followed by an artist or album, first.")
         .getResponse();
     }
 

@@ -7,7 +7,7 @@ const HelpIntentHandler = {
   },
   handle(handlerInput) {
     return handlerInput.responseBuilder
-      .speak('Say play, followed by an artist, album, playlist, or song name to start listening.')
+      .speak('Say play or shuffle, followed by an artist, album, playlist, or song name to start listening.')
       .withShouldEndSession(true)
       .getResponse();
   },
@@ -20,8 +20,8 @@ const FallbackIntentHandler = {
   },
   handle(handlerInput) {
     return handlerInput.responseBuilder
-      .speak("I didn't catch that. Try saying, play, followed by an artist, album, playlist, or song.")
-      .reprompt('Say play, followed by what you want to hear.')
+      .speak("I didn't catch that. Try saying, play or shuffle, followed by an artist, album, playlist, or song.")
+      .reprompt('Say play or shuffle, followed by what you want to hear.')
       .getResponse();
   },
 };
