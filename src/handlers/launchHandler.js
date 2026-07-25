@@ -1,6 +1,6 @@
 const Alexa = require('ask-sdk-core');
 
-const READY_MESSAGE = 'Jellyfin skill ready. Say play, followed by an artist, album, playlist, or song.';
+const READY_MESSAGE = 'Jellyfin skill ready. Say play or shuffle, followed by an artist, album, playlist, or song.';
 
 // Keep the session open (with a reprompt) so a direct follow-up like "play u2" matches
 // PlayMusicIntent instead of falling through to Alexa's built-in Music domain once the
@@ -19,10 +19,9 @@ const LaunchRequestHandler = {
   handle: respondReady,
 };
 
-// "Alexa, open X" (LaunchRequest) has been unreliable in practice, while "Alexa, ask X to
-// Y" one-shot invocations reliably route to this skill's own intents. This intent gives the
-// same one-shot pattern a way to reach the exact same "ready" response as LaunchRequest,
-// bypassing whatever makes native LaunchRequest dispatch flaky.
+// Earlier testing found native "Alexa, open X" (LaunchRequest) unreliable, which is why this
+// intent exists as a one-shot "ask X to open" fallback. Since then, native open has proven
+// reliable as step one of the two-part invocation flow (see README) -- kept as a fallback path.
 const OpenPlayerIntentHandler = {
   canHandle(handlerInput) {
     return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'

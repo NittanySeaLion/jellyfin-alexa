@@ -4,6 +4,7 @@
   "description": "Self-hosted custom Alexa skill for voice-controlled music playback from a Jellyfin server.",
   "main": "src/index.js",
   "private": true,
+  "license": "GPL-3.0-or-later",
   "scripts": {
     "start": "node src/index.js",
     "test": "node --test test/"
