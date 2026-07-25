@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "jelly fish hook",
+      "invocationName": "jelly fish head",
       "intents": [
         { "name": "AMAZON.CancelIntent", "samples": [] },
         { "name": "AMAZON.HelpIntent", "samples": [] },
@@ -25,6 +25,21 @@
             "play song {query}",
             "listen to {query}",
             "search for {query}"
+          ]
+        },
+        {
+          "name": "ShuffleMusicIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "shuffle {query}",
+            "shuffle play {query}",
+            "play {query} on shuffle",
+            "shuffle my {query}"
           ]
         },
         {

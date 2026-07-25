@@ -19,9 +19,23 @@ function parseToken(token) {
   };
 }
 
-function setQueue(userId, tracks, matchName) {
+function shuffleArray(items) {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+// `shuffle` reorders the whole track list before queuing, so playback starts on a random
+// track (instead of always track 1) and continues in shuffled order from there.
+function setQueue(userId, tracks, matchName, { shuffle = false } = {}) {
   queues.set(userId, {
-    tracks, currentIndex: 0, matchName, repeatEnabled: false,
+    tracks: shuffle ? shuffleArray(tracks) : tracks,
+    currentIndex: 0,
+    matchName,
+    repeatEnabled: false,
   });
 }
 
@@ -95,11 +109,7 @@ function shuffleUpcoming(userId) {
   const queue = queues.get(userId);
   if (!queue) return false;
 
-  const upcoming = queue.tracks.slice(queue.currentIndex + 1);
-  for (let i = upcoming.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [upcoming[i], upcoming[j]] = [upcoming[j], upcoming[i]];
-  }
+  const upcoming = shuffleArray(queue.tracks.slice(queue.currentIndex + 1));
   queue.tracks = [...queue.tracks.slice(0, queue.currentIndex + 1), ...upcoming];
   return true;
 }

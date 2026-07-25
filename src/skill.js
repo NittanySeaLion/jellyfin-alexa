@@ -1,7 +1,7 @@
 const Alexa = require('ask-sdk-core');
 
 const { LaunchRequestHandler, OpenPlayerIntentHandler } = require('./handlers/launchHandler');
-const { PlayMusicIntentHandler } = require('./handlers/playMusicHandler');
+const { PlayMusicIntentHandler, ShuffleMusicIntentHandler } = require('./handlers/playMusicHandler');
 const {
   PlayArtistIntentHandler,
   PlayAlbumIntentHandler,
@@ -40,6 +40,7 @@ const skill = Alexa.SkillBuilders.custom()
     LaunchRequestHandler,
     OpenPlayerIntentHandler,
     PlayMusicIntentHandler,
+    ShuffleMusicIntentHandler,
     PlayArtistIntentHandler,
     PlayAlbumIntentHandler,
     PlayPlaylistIntentHandler,

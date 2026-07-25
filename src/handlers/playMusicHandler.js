@@ -12,4 +12,15 @@ const PlayMusicIntentHandler = {
   },
 };
 
-module.exports = { PlayMusicIntentHandler };
+const ShuffleMusicIntentHandler = {
+  canHandle(handlerInput) {
+    return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+      && Alexa.getIntentName(handlerInput.requestEnvelope) === 'ShuffleMusicIntent';
+  },
+  handle(handlerInput) {
+    const query = Alexa.getSlotValue(handlerInput.requestEnvelope, 'query');
+    return playQuery(handlerInput, query, undefined, { shuffle: true });
+  },
+};
+
+module.exports = { PlayMusicIntentHandler, ShuffleMusicIntentHandler };

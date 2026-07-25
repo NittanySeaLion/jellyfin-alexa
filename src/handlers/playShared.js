@@ -2,9 +2,10 @@ const jellyfinClient = require('../jellyfin/client');
 const { buildStreamUrl } = require('../jellyfin/streamUrl');
 const queueStore = require('../state/queueStore');
 
-// Shared by PlayMusicIntent and the type-specific PlayArtist/Album/PlaylistIntent handlers:
-// search (optionally restricted to itemTypes), resolve to a track list, queue it, and play.
-async function playQuery(handlerInput, query, itemTypes) {
+// Shared by PlayMusicIntent, ShuffleMusicIntent, and the type-specific PlayArtist/Album/PlaylistIntent
+// handlers: search (optionally restricted to itemTypes), resolve to a track list, queue it, and play.
+// `shuffle` starts on a random track instead of always track 1 -- see queueStore.setQueue.
+async function playQuery(handlerInput, query, itemTypes, { shuffle = false } = {}) {
   if (!query) {
     return handlerInput.responseBuilder
       .speak("I didn't catch what to play. Try saying, play, followed by an artist or album.")
@@ -29,12 +30,12 @@ async function playQuery(handlerInput, query, itemTypes) {
       .getResponse();
   }
 
-  queueStore.setQueue(userId, result.tracks, result.match.Name);
+  queueStore.setQueue(userId, result.tracks, result.match.Name, { shuffle });
   const { track, token } = queueStore.currentTrackWithToken(userId);
   const streamUrl = buildStreamUrl(track.Id);
 
   return handlerInput.responseBuilder
-    .speak(`Playing ${result.match.Name}.`)
+    .speak(`${shuffle ? 'Shuffling' : 'Playing'} ${result.match.Name}.`)
     .addAudioPlayerPlayDirective('REPLACE_ALL', streamUrl, token, 0, null)
     .withShouldEndSession(false)
     .getResponse();
